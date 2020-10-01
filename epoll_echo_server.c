@@ -62,7 +62,7 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 	int i;
 	int connections_count, new_socket_events, sock_conn_fd;
 	char buffer[2048] = "\0";
-	while (connections_count < MAX_CONNECTIONS * 2) {
+	while (connections_count < MAX_CONNECTIONS) {
 		// poll for new connections
 		if ((new_socket_events = epoll_wait(epollfd, events, MAX_CONNECTIONS, -1)) == -1) {
 			CERR("epoll_wait failed");
@@ -79,7 +79,7 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 				struct sockaddr_in client_addr;
 				socklen_t client_addr_len = sizeof(client_addr);
 				sock_conn_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
-
+				++connections_count;
 				if (sock_conn_fd == -1) {
 					CERR("accept new connection failed");
 					exit(EXIT_FAILURE);
@@ -103,8 +103,9 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 				int sock_fd = events[i].data.fd;
 				ssize_t read_size;
 				read_size = read(sock_fd, buffer, 2048);
+				CLOG(buffer);
 				int write_size = write(sock_fd, buffer, strlen(buffer));
-				++connections_count;
+
 			}
 			// If the event is a close operation remove it from the epoll watch list and close the file descriptor
 			if (events[i].events & (EPOLLRDHUP | EPOLLHUP)) {

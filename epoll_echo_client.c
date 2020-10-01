@@ -39,15 +39,17 @@ void CREP(char * msg)
 }
 int main(int argc, char const *argv[])
 {
-    int i;
+
     pthread_t threads[MAX_CONNECTIONS];
     clock_t start, end;
     double cpu_time_used;
     start = clock();
-    for (i = 0; i < MAX_CONNECTIONS; ++i) {
-        pthread_create(&threads[i], NULL, run_client, (void *)&i);
+    for (int i = 0; i < MAX_CONNECTIONS; ++i) {
+        int *arg = malloc(sizeof(*arg));
+        *arg = i;
+        pthread_create(&threads[i], NULL, run_client, arg);
     }
-    for (i = 0; i < MAX_CONNECTIONS; ++i) {
+    for (int i = 0; i < MAX_CONNECTIONS; ++i) {
         pthread_join(threads[i], NULL);
     }
     end = clock();
@@ -64,7 +66,7 @@ void *run_client(void * threadid)
     int sock = 0;
     struct sockaddr_in server_address;
     char buffer[2048] = {0};
-
+    int id = *((int *) threadid);
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         CERR("socket failed to create");
     }
@@ -79,10 +81,12 @@ void *run_client(void * threadid)
         CERR("connection failed");
     }
     char temp_buf[1024];
-    snprintf(temp_buf, sizeof(temp_buf), "Hello from %d", *(int *)threadid);
+    snprintf(temp_buf, sizeof(temp_buf), "Hello from %d", id);
+    CLOG(temp_buf);
     send(sock, temp_buf , strlen(temp_buf) , 0);
     int read_length = read(sock, buffer, 2048);
     close(sock);
-    CLOG(buffer);
+    free(threadid);
+    //CLOG(buffer);
     return 0;
 }
