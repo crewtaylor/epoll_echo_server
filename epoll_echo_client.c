@@ -39,17 +39,17 @@ void CREP(char * msg)
 }
 int main(int argc, char const *argv[])
 {
-
+    int i = 0;
     pthread_t threads[MAX_CONNECTIONS];
     clock_t start, end;
     double cpu_time_used;
     start = clock();
-    for (int i = 0; i < MAX_CONNECTIONS; ++i) {
+    for (i = 0; i < MAX_CONNECTIONS; ++i) {
         int *arg = malloc(sizeof(*arg));
         *arg = i;
         pthread_create(&threads[i], NULL, run_client, arg);
     }
-    for (int i = 0; i < MAX_CONNECTIONS; ++i) {
+    for (i = 0; i < MAX_CONNECTIONS; ++i) {
         pthread_join(threads[i], NULL);
     }
     end = clock();
