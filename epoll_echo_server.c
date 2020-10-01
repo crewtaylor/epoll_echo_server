@@ -85,6 +85,18 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 		// Loop through all newly polled connections
 		for (i = 0; i < new_socket_events; ++i) {
 			// If this connection is the server then accept new connection on the server
+			if (events[i].events & (EPOLLRDHUP | EPOLLHUP)) {
+				if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) == -1) {
+					CERR("close event failed");
+				} else {
+					char temp_buf[128];
+					snprintf(temp_buf, sizeof(temp_buf), "event %d closed", events[i].data.fd);
+					CLOG(temp_buf);
+				}
+
+				close(events[i].data.fd);
+				continue;
+			}
 			if (events[i].data.fd == server_fd) {
 				struct sockaddr_in client_addr;
 				socklen_t client_addr_len = sizeof(client_addr);
@@ -113,28 +125,21 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 
 				// if the event is a read operation read and echo it directly back to the open file descriptor
 			} else if (events[i].events & EPOLLIN) {
+
 				memset(buffer, 0, sizeof buffer);
 				int sock_fd = events[i].data.fd;
 				ssize_t read_size;
 				read_size = read(sock_fd, buffer, 2048);
+				// Check to see if the event is just a close event
+
 				CLOG(buffer);
 				int write_size = write(sock_fd, buffer, strlen(buffer));
+
 
 			}
 
 			// If the event is a close operation remove it from the epoll watch list and close the file descriptor
-			if (events[i].events & (EPOLLRDHUP | EPOLLHUP)) {
-				if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) == -1) {
-					CERR("close event failed");
-				} else {
-					char temp_buf[128];
-					snprintf(temp_buf, sizeof(temp_buf), "event %d closed", events[i].data.fd);
-					CLOG(temp_buf);
-				}
 
-				close(events[i].data.fd);
-				continue;
-			}
 		}
 	}
 }
