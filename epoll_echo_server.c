@@ -12,6 +12,7 @@
 #include <time.h>
 #define PORT 8081
 #define MAX_CONNECTIONS 2000
+
 char * get_datetime_for_log()
 {
 	time_t t = time(NULL);
@@ -20,19 +21,21 @@ char * get_datetime_for_log()
 	snprintf(datetime, sizeof(datetime) * 8, "%d-%02d-%02d %02d:%02d:%02d", (tm.tm_year + 1900), (tm.tm_mon + 1), (tm.tm_mday), (tm.tm_hour), tm.tm_min , tm.tm_sec );
 	return datetime;
 }
+
 void CERR(char * msg)
 {
 	char * datetime = get_datetime_for_log();
 	printf("[%s] <ERROR> : %s\n", datetime, msg);
 	free(datetime);
 }
-// Logging is turned off to minimize runtime
+
 void CLOG(char * msg)
 {
 	char * datetime = get_datetime_for_log();
 	printf("[%s] <LOG> : %s\n", datetime, msg);
 	free(datetime);
 }
+
 //Report
 void CREP(char * msg)
 {
@@ -40,9 +43,11 @@ void CREP(char * msg)
 	printf("[%s] <REP> : %s\n", datetime, msg);
 	free(datetime);
 }
+
 void set_nonblocking(int sockfd)
 {
 	int flags = fcntl(sockfd, F_GETFL, 0);
+
 	if (flags == -1) {
 		CERR("fcntl F_GETFL");
 	}
@@ -51,27 +56,32 @@ void set_nonblocking(int sockfd)
 		CERR("fcntl F_SETFL O_NONBLOCK");
 	}
 }
+
 void set_sockaddr(struct sockaddr_in *addr)
 {
 	addr->sin_family = AF_INET;
 	addr->sin_addr.s_addr = htonl(INADDR_ANY);
 	addr->sin_port = htons(PORT);
 }
+
 void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd, int server_fd, clock_t * start)
 {
 	int i;
 	int connections_count, new_socket_events, sock_conn_fd;
 	char buffer[2048] = "\0";
+
 	while (connections_count < MAX_CONNECTIONS) {
 		// poll for new connections
 		if ((new_socket_events = epoll_wait(epollfd, events, MAX_CONNECTIONS, -1)) == -1) {
 			CERR("epoll_wait failed");
 			exit(EXIT_FAILURE);
 		}
+
 		// Start clock if it is the first connection so we get an accurate measurement
 		if (connections_count == 0) {
 			*start = clock();
 		}
+
 		// Loop through all newly polled connections
 		for (i = 0; i < new_socket_events; ++i) {
 			// If this connection is the server then accept new connection on the server
@@ -80,23 +90,27 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 				socklen_t client_addr_len = sizeof(client_addr);
 				sock_conn_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
 				++connections_count;
+
 				if (sock_conn_fd == -1) {
 					CERR("accept new connection failed");
 					exit(EXIT_FAILURE);
 				} else {
 					CLOG("accepted new connection");
 				}
+
 				// Set the new connection to nonblocking
 				set_nonblocking(sock_conn_fd);
 				// Set the events it should watch for and its file descriptor. In, edge, and close
 				ev->events = EPOLLIN | EPOLLET | EPOLLRDHUP | EPOLLHUP;
 				ev->data.fd = sock_conn_fd;
+
 				// Add to the epoll wathc list
 				if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sock_conn_fd, ev) == -1) {
 					CERR("new event add failed");
 				} else {
 					CLOG("new event added");
 				}
+
 				// if the event is a read operation read and echo it directly back to the open file descriptor
 			} else if (events[i].events & EPOLLIN) {
 				memset(buffer, 0, sizeof buffer);
@@ -107,6 +121,7 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 				int write_size = write(sock_fd, buffer, strlen(buffer));
 
 			}
+
 			// If the event is a close operation remove it from the epoll watch list and close the file descriptor
 			if (events[i].events & (EPOLLRDHUP | EPOLLHUP)) {
 				if (epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL) == -1) {
@@ -116,12 +131,14 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 					snprintf(temp_buf, sizeof(temp_buf), "event %d closed", events[i].data.fd);
 					CLOG(temp_buf);
 				}
+
 				close(events[i].data.fd);
 				continue;
 			}
 		}
 	}
 }
+
 void run_server()
 {
 	//initialzing variables for sockets
@@ -137,6 +154,7 @@ void run_server()
 		CERR("socket failed");
 		exit(EXIT_FAILURE);
 	}
+
 	//Set socket to nonblocking
 	set_nonblocking(server_fd);
 	struct sockaddr_in server_addr;
@@ -150,6 +168,7 @@ void run_server()
 		CERR(temp_buf);
 		exit(EXIT_FAILURE);
 	}
+
 	// Start listening on port 8081 for connections and check to see if the listen failed
 	if (listen(server_fd, MAX_CONNECTIONS) < 0) {
 		CERR("listen failed");
@@ -167,14 +186,17 @@ void run_server()
 		CERR("epoll_create failed");
 		exit(EXIT_FAILURE);
 	}
+
 	// Add server to epoll watch list
 	// Set server to read operations
 	ev.data.fd = server_fd;
 	ev.events = EPOLLIN;
+
 	if (epoll_ctl(epollfd, EPOLL_CTL_ADD, server_fd, &ev) == -1) {
 		CERR("listeing socket add to epoll failed");
 		exit(EXIT_FAILURE);
 	}
+
 	//Initialize timer
 	clock_t start, end;
 	double cpu_time_used;
@@ -189,6 +211,7 @@ void run_server()
 	snprintf(temp_buf, sizeof(temp_buf), "Server took %f", cpu_time_used);
 	CREP(temp_buf);
 }
+
 int main(int argc, char const *argv[])
 {
 	run_server();

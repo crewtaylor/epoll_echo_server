@@ -20,8 +20,8 @@ Open a new terminal window
 
 #### Server
 
-The server is based on the _epoll_ event polling system in Linux. It supports **2000** connections until it closes and reports how long it took to read messages from all **2000** clients and echo back the messages. It has log ability for each connection event but this is turned off to optimize run time. If you would like logging uncomment the `CLOG` function.
+The server is based on the _epoll_ event polling system in Linux. It supports **2000** connections until it closes and reports how long it took to read messages from all **2000** clients and echo back the messages. There server logs each connection and message it receieves. This logging capability can be turned off to optimize for runtime.
 
 #### Client
 
-The client program spawns **2000** threads that all connect to the server and say hello with their `thread_id`. The threads then join together and the client program reports how long it took to send and receive the hello message. Logging is also turned off here to optimize for run time. If you would like logging uncomment the `CLOG` function.
+The client program spawns **2000** threads that all connect to the server and say hello with their `thread_id`. The threads then join together and the client program reports how long it took to send and receive the hello message. Logging is also turned on here for readability but can be commented out to optimize for runtime. 

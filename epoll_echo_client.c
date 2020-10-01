@@ -8,7 +8,9 @@
 #include <time.h>
 #define PORT 8081
 #define MAX_CONNECTIONS 2000
+
 void *run_client(void * threadid);
+
 char * get_datetime_for_log()
 {
     time_t t = time(NULL);
@@ -17,19 +19,21 @@ char * get_datetime_for_log()
     snprintf(datetime, sizeof(datetime) * 8, "%d-%02d-%02d %02d:%02d:%02d", (tm.tm_year + 1900), (tm.tm_mon + 1), (tm.tm_mday), (tm.tm_hour), tm.tm_min , tm.tm_sec );
     return datetime;
 }
+
 void CERR(char * msg)
 {
     char * datetime = get_datetime_for_log();
     printf("[%s] <ERROR> : %s\n", datetime, msg);
     free(datetime);
 }
-// Logging is turned off to minimize runtime
+
 void CLOG(char * msg)
 {
     char * datetime = get_datetime_for_log();
     printf("[%s] <LOG> : %s\n", datetime, msg);
     free(datetime);
 }
+
 //Report
 void CREP(char * msg)
 {
@@ -37,6 +41,7 @@ void CREP(char * msg)
     printf("[%s] <REP> : %s\n", datetime, msg);
     free(datetime);
 }
+
 int main(int argc, char const *argv[])
 {
     int i = 0;
@@ -61,6 +66,7 @@ int main(int argc, char const *argv[])
     CREP(temp_buf);
     return 0;
 }
+
 void *run_client(void * threadid)
 {
     int sock = 0;
@@ -87,6 +93,5 @@ void *run_client(void * threadid)
     int read_length = read(sock, buffer, 2048);
     close(sock);
     free(threadid);
-    //CLOG(buffer);
     return 0;
 }
