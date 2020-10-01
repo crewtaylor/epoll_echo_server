@@ -12,24 +12,33 @@
 #include <time.h>
 #define PORT 8081
 #define MAX_CONNECTIONS 2000
-void CERR(char * msg)
+char * get_datetime_for_log()
 {
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
-	printf("[%d-%02d-%02d %02d:%02d:%02d] <ERROR> : %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, msg);
+	char  * datetime = malloc(4096);
+	snprintf(datetime, sizeof(datetime) * 8, "%d-%02d-%02d %02d:%02d:%02d", (tm.tm_year + 1900), (tm.tm_mon + 1), (tm.tm_mday), (tm.tm_hour), tm.tm_min , tm.tm_sec );
+	return datetime;
+}
+void CERR(char * msg)
+{
+	char * datetime = get_datetime_for_log();
+	printf("[%s] <ERROR> : %s\n", datetime, msg);
+	free(datetime);
 }
 // Logging is turned off to minimize runtime
 void CLOG(char * msg)
 {
-	// time_t t = time(NULL);
-	// struct tm tm = *localtime(&t);
-	// printf("[%d-%02d-%02d %02d:%02d:%02d] <LOG> : %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, msg);
+	char * datetime = get_datetime_for_log();
+	printf("[%s] <LOG> : %s\n", datetime, msg);
+	free(datetime);
 }
+//Report
 void CREP(char * msg)
 {
-	time_t t = time(NULL);
-	struct tm tm = *localtime(&t);
-	printf("[%d-%02d-%02d %02d:%02d:%02d] <REP> : %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, msg);
+	char * datetime = get_datetime_for_log();
+	printf("[%s] <REP> : %s\n", datetime, msg);
+	free(datetime);
 }
 void set_nonblocking(int sockfd)
 {
@@ -44,18 +53,18 @@ void set_nonblocking(int sockfd)
 }
 void set_sockaddr(struct sockaddr_in *addr)
 {
-	bzero((char*) addr, sizeof(addr));
 	addr->sin_family = AF_INET;
-	inet_aton("127.0.0.1", &(addr->sin_addr));
+	addr->sin_addr.s_addr = htonl(INADDR_ANY);
 	addr->sin_port = htons(PORT);
 }
 void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd, int server_fd, clock_t * start)
 {
-	int connections_count, new_connections, sock_conn_fd;
+	int i;
+	int connections_count, new_socket_events, sock_conn_fd;
 	char buffer[2048] = "\0";
 	while (connections_count < MAX_CONNECTIONS * 2) {
 		// poll for new connections
-		if ((new_connections = epoll_wait(epollfd, events, MAX_CONNECTIONS, -1)) == -1) {
+		if ((new_socket_events = epoll_wait(epollfd, events, MAX_CONNECTIONS, -1)) == -1) {
 			CERR("epoll_wait failed");
 			exit(EXIT_FAILURE);
 		}
@@ -64,7 +73,7 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 			*start = clock();
 		}
 		// Loop through all newly polled connections
-		for (int i = 0; i < new_connections; ++i) {
+		for (i = 0; i < new_socket_events; ++i) {
 			// If this connection is the server then accept new connection on the server
 			if (events[i].data.fd == server_fd) {
 				struct sockaddr_in client_addr;

@@ -9,34 +9,45 @@
 #define PORT 8081
 #define MAX_CONNECTIONS 2000
 void *run_client(void * threadid);
+char * get_datetime_for_log()
+{
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char  * datetime = malloc(4096);
+    snprintf(datetime, sizeof(datetime) * 8, "%d-%02d-%02d %02d:%02d:%02d", (tm.tm_year + 1900), (tm.tm_mon + 1), (tm.tm_mday), (tm.tm_hour), tm.tm_min , tm.tm_sec );
+    return datetime;
+}
 void CERR(char * msg)
 {
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    printf("[%d-%02d-%02d %02d:%02d:%02d] <ERROR> : %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, msg);
+    char * datetime = get_datetime_for_log();
+    printf("[%s] <ERROR> : %s\n", datetime, msg);
+    free(datetime);
 }
+// Logging is turned off to minimize runtime
 void CLOG(char * msg)
 {
-    // time_t t = time(NULL);
-    // struct tm tm = *localtime(&t);
-    // printf("[%d-%02d-%02d %02d:%02d:%02d] <SYS> : %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, msg);
+    char * datetime = get_datetime_for_log();
+    printf("[%s] <LOG> : %s\n", datetime, msg);
+    free(datetime);
 }
+//Report
 void CREP(char * msg)
 {
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    printf("[%d-%02d-%02d %02d:%02d:%02d] <REP> : %s\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, msg);
+    char * datetime = get_datetime_for_log();
+    printf("[%s] <REP> : %s\n", datetime, msg);
+    free(datetime);
 }
 int main(int argc, char const *argv[])
 {
+    int i;
     pthread_t threads[MAX_CONNECTIONS];
     clock_t start, end;
     double cpu_time_used;
     start = clock();
-    for (int i = 0; i < MAX_CONNECTIONS; ++i) {
+    for (i = 0; i < MAX_CONNECTIONS; ++i) {
         pthread_create(&threads[i], NULL, run_client, (void *)&i);
     }
-    for (int i = 0; i < MAX_CONNECTIONS; ++i) {
+    for (i = 0; i < MAX_CONNECTIONS; ++i) {
         pthread_join(threads[i], NULL);
     }
     end = clock();
