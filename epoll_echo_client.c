@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <errno.h>
 #include <time.h>
 #define PORT 8081
 #define MAX_CONNECTIONS 2000
@@ -20,25 +21,10 @@ char * get_datetime_for_log()
     return datetime;
 }
 
-void CERR(char * msg)
+void CLOG(char * level, char * msg)
 {
     char * datetime = get_datetime_for_log();
-    printf("[%s] <ERROR> : %s\n", datetime, msg);
-    free(datetime);
-}
-
-void CLOG(char * msg)
-{
-    char * datetime = get_datetime_for_log();
-    printf("[%s] <LOG> : %s\n", datetime, msg);
-    free(datetime);
-}
-
-//Report
-void CREP(char * msg)
-{
-    char * datetime = get_datetime_for_log();
-    printf("[%s] <REP> : %s\n", datetime, msg);
+    printf("[%s] <%s> : %s\n", datetime, level, msg);
     free(datetime);
 }
 
@@ -61,9 +47,9 @@ int main(int argc, char const *argv[])
     cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     char temp_buf[128];
     snprintf(temp_buf, sizeof(temp_buf), "%d connections to the server were made", MAX_CONNECTIONS);
-    CREP(temp_buf);
+    CLOG("REPORT", temp_buf);
     snprintf(temp_buf, sizeof(temp_buf), "Client took %f", cpu_time_used);
-    CREP(temp_buf);
+    CLOG("REPORT", temp_buf);
     return 0;
 }
 
@@ -74,24 +60,27 @@ void *run_client(void * threadid)
     char buffer[2048] = {0};
     int id = *((int *) threadid);
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        CERR("socket failed to create");
+        CLOG("ERROR", "socket failed to create");
     }
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(PORT);
 
     // Convert IPv4 and IPv6 addresses from text to binary form
     if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) <= 0) {
-        CERR("address is invalid");
+        CLOG("ERROR", "address is invalid");
     }
     if (connect(sock, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
-        CERR("connection failed");
+        CLOG("ERROR", "connection failed");
+        printf("%d\n", errno);
     }
+
     char temp_buf[1024];
     snprintf(temp_buf, sizeof(temp_buf), "Hello from %d", id);
-    CLOG(temp_buf);
+    CLOG("LOG", temp_buf);
     send(sock, temp_buf , strlen(temp_buf) , 0);
     int read_length = read(sock, buffer, 2048);
     close(sock);
+
     free(threadid);
     return 0;
 }
