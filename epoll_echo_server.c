@@ -110,15 +110,17 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 
 				// if the event is a read operation read and echo it directly back to the open file descriptor
 			} else if (events[i].events & EPOLLIN) {
-				int buffer_size = 10 * sizeof(char);
+				// Initialize buffer for read operation
+				int buffer_size = 2 * sizeof(char);
 				char * buffer = malloc(buffer_size);
 				int sock_fd = events[i].data.fd;
 				ssize_t read_size;
 				read_size = read(sock_fd, buffer, buffer_size);
+				// Read and realloc buffer until the read_size is 0 or -1
 				while (read_size > 0) {
 					buffer_size *= 2;
 					buffer = realloc(buffer, buffer_size);
-					read_size = read(sock_fd, buffer + buffer_size / 2, buffer_size);
+					read_size = read(sock_fd, buffer + buffer_size / 2, buffer_size / 2);
 				}
 				CLOG("LOG", buffer);
 				int write_size = write(sock_fd, buffer, strlen(buffer));
