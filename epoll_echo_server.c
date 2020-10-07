@@ -55,8 +55,6 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 {
 	int i;
 	int connections_count, new_socket_events, sock_conn_fd;
-	char buffer[2048] = "\0";
-
 	while (connections_count < MAX_CONNECTIONS) {
 		// poll for new connections
 		if ((new_socket_events = epoll_wait(epollfd, events, MAX_CONNECTIONS, -1)) == -1) {
@@ -90,8 +88,6 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 				struct sockaddr_in client_addr;
 				socklen_t client_addr_len = sizeof(client_addr);
 				sock_conn_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
-
-
 				if (sock_conn_fd == -1) {
 					CLOG("ERROR", "accept new connection failed");
 					exit(EXIT_FAILURE);
@@ -102,7 +98,7 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 				// Set the new connection to nonblocking
 				set_nonblocking(sock_conn_fd);
 				// Set the events it should watch for and its file descriptor. In, edge, and close
-				ev->events = EPOLLIN | EPOLLET | EPOLLRDHUP | EPOLLHUP;
+				ev->events = EPOLLIN | EPOLLRDHUP | EPOLLHUP;
 				ev->data.fd = sock_conn_fd;
 
 				// Add to the epoll wathc list
@@ -114,14 +110,19 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 
 				// if the event is a read operation read and echo it directly back to the open file descriptor
 			} else if (events[i].events & EPOLLIN) {
-
-				memset(buffer, 0, sizeof buffer);
+				int buffer_size = 10 * sizeof(char);
+				char * buffer = malloc(buffer_size);
 				int sock_fd = events[i].data.fd;
 				ssize_t read_size;
-				read_size = read(sock_fd, buffer, 2048);
+				read_size = read(sock_fd, buffer, buffer_size);
+				while (read_size > 0) {
+					buffer_size *= 2;
+					buffer = realloc(buffer, buffer_size);
+					read_size = read(sock_fd, buffer + buffer_size / 2, buffer_size);
+				}
 				CLOG("LOG", buffer);
 				int write_size = write(sock_fd, buffer, strlen(buffer));
-
+				free(buffer);
 			}
 		}
 	}
