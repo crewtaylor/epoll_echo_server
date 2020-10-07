@@ -55,7 +55,7 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 {
 	int i;
 	int connections_count, new_socket_events, sock_conn_fd;
-	char buffer[10] = "\0";
+	char buffer[2048] = "\0";
 
 	while (connections_count < MAX_CONNECTIONS) {
 		// poll for new connections
@@ -94,7 +94,6 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 
 				if (sock_conn_fd == -1) {
 					CLOG("ERROR", "accept new connection failed");
-					printf("%d\n", errno);
 					exit(EXIT_FAILURE);
 				} else {
 					CLOG("LOG", "accepted new connection");
@@ -119,25 +118,9 @@ void epoll_loop(struct epoll_event *events, struct epoll_event *ev, int epollfd,
 				memset(buffer, 0, sizeof buffer);
 				int sock_fd = events[i].data.fd;
 				ssize_t read_size;
-				int true_size = 0;
-				int data;
-				FILE *in = fdopen(sock_fd, "r");
-				data = fgetc(in);
-				while ((data = fgetc(in)) != EOF) {
-					++true_size;
-				}
-				int offset = fseek(in, 0, SEEK_SET);
-				printf("%d\n", errno);
-				char * true_buffer = malloc(sizeof(char) * true_size);
-				int i = 0;
-				while ((data = fgetc(in)) != EOF) {
-					true_buffer[i] = fgetc(in);
-					++i;
-					printf("%d\n", data);
-				}
-				CLOG("LOG", true_buffer);
+				read_size = read(sock_fd, buffer, 2048);
+				CLOG("LOG", buffer);
 				int write_size = write(sock_fd, buffer, strlen(buffer));
-				free(true_buffer);
 
 			}
 		}
